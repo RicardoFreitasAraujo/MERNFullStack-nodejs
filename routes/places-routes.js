@@ -3,6 +3,7 @@ const { check } = require('express-validator');
 
 const placesControlles = require('../controller/place-controller');
 
+
 const router = express.Router();
 
 router.get('/:pid', placesControlles.getPlaceById);
@@ -11,7 +12,7 @@ router.post('/',
     [check('title')
         .not()
         .isEmpty(),
-     check('desription')
+     check('description')
         .isLength({min: 5}),
      check('address').not().isEmpty()
 
