@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 
 const placeRoutes = require('./routes/places-routes');
 const userRoutes = require('./routes/users-routes');
@@ -26,6 +27,19 @@ app.use((error, req, res, next) =>{
                .json({message: error.message || 'An unknown error occurred!'});
 });
 
-app.listen(5000, () => {
-   console.log('Server running in PORT 5000.');
-});
+const url = 'mongodb+srv://admin:santos@cluster0.osdel.mongodb.net/places?retryWrites=true&w=majority';
+
+console.log('Iniciando aplicação.');
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => {
+            console.log('Connectado ao mongo.');
+            app.listen(5000, () => { 
+                console.log('Server running in PORT 5000.');
+             }); 
+        })
+        .catch((err) => {
+            console.log('Erro ao conectar no mongo.');
+            console.log(err);
+        });
+
+

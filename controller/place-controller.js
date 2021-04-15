@@ -2,6 +2,7 @@ const HttpError = require('../model/http-error');
 const uuid = require('uuid/v4');
 const { validationResult } = require('express-validator');
 const getCoordsForAddress = require('../utils/location');
+const Place = require('../model/place');
 
 let DUMMY_PLACES = [
     {
@@ -17,16 +18,21 @@ let DUMMY_PLACES = [
     }
 ];
 
-const getPlaceById = (req, res, next) => {
+const getPlaceById = async (req, res, next) => {
     const placeId = req.params.pid;
-
-    const place = DUMMY_PLACES.find(item => { return item.id == placeId; });
+    let place;
+    try {
+        place = await Place.findById(placeId);
+    } catch(err) {
+        const error = new HttpError('Error on finding product', 500);
+        return next(error);
+    }
     
     if (!place) {
         return next(new HttpError('Could not find a place for the provided id.', 404));
     }
 
-    return res.json({place: place});
+    return res.json({place: place.toObject({getters: true}) });
 }
 
 const getPlaceByUserId = (req, res, next) => {
@@ -55,16 +61,21 @@ const createPlace = async (req, res, next) => {
         return next(error);
     }
     
-    const createdPlaceObj = {
-        id: uuid(),
+    const createdPlaceObj = new Place({
         title,
         description,
-        location: coordinates,
         address,
+        location: coordinates,
+        image: 'https://ibcdn.canaltech.com.br/8FplhVkDQdAatiUcehCimgkGJlI=/512x288/smart/i257652.jpeg',
         creator
-    };
-
-    DUMMY_PLACES.push(createdPlaceObj);
+    });
+    
+    try {
+        await createdPlaceObj.save();
+    } catch(err) {
+        const error = new HttpError('Creating place failed',500);
+        return next(error);
+    }
     
     return res.status(201).json({place: createdPlaceObj});
 };

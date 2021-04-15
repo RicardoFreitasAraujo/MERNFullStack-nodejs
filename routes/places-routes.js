@@ -15,7 +15,6 @@ router.post('/',
      check('description')
         .isLength({min: 5}),
      check('address').not().isEmpty()
-
     ],
     placesControlles.createPlace);
 
