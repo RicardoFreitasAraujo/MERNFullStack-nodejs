@@ -3,14 +3,6 @@ const uuid = require('uuid/v4');
 const { validationResult } = require('express-validator');
 const User = require('../model/user');
 
-const DUMMY_USERS = [
-    {
-        id: 'u1',
-        name: 'Ricardo Freitas',
-        email: 'ricarod@ricarod.com',
-        password: '123'
-    }
-]; 
 
 const getUsers = async (req, res, next) => {
     let users;
@@ -26,7 +18,6 @@ const getUsers = async (req, res, next) => {
 
 const signup = async (req, res, next) => {
     const errors = validationResult(req);
-    console.log(errors);
     if (!errors.isEmpty()) {
         return next(new HttpError('Invalid inputs', 422));
     }

@@ -1,23 +1,14 @@
 const HttpError = require('../model/http-error');
 const uuid = require('uuid/v4');
+const mongoose = require('mongoose');
+
 const { validationResult } = require('express-validator');
 const getCoordsForAddress = require('../utils/location');
 const Place = require('../model/place');
-const place = require('../model/place');
+const User = require('../model/user');
 
-let DUMMY_PLACES = [
-    {
-        id: 'p1',
-        title: 'Vila Belmiro',
-        description: 'Oen of the most famous soccer statium',
-        location: {
-            lat:23.950049078012494 ,
-            log:-46.33910346010528
-        },
-        addres: 'R. Antônio Malheiros Júnior, 42 - Vila Belmiro, Santos - SP, 11070-200',
-        creator: 'u1'
-    }
-];
+
+
 
 const getPlaceById = async (req, res, next) => {
     const placeId = req.params.pid;
@@ -66,10 +57,22 @@ const createPlace = async (req, res, next) => {
         coordinates = await getCoordsForAddress(address);
     }
     catch (error) {
-        return next(error);
+        return next(new HttpError('Error on GPS'));
     }
     
-    const createdPlaceObj = new Place({
+    let user;
+    try {
+        user = await User.findById(creator);
+    } catch(err) {
+        console.log(err);
+       return next(new HttpError('Error on finding user')); 
+    }
+
+    if (!user) {
+        return next(new HttpError('Could not find user for place.', 404)); 
+    }
+
+    const createdPlace = new Place({
         title,
         description,
         address,
@@ -77,15 +80,20 @@ const createPlace = async (req, res, next) => {
         image: 'https://ibcdn.canaltech.com.br/8FplhVkDQdAatiUcehCimgkGJlI=/512x288/smart/i257652.jpeg',
         creator
     });
-    
+
     try {
-        await createdPlaceObj.save();
+        const session = await mongoose.startSession();
+        await session.startTransaction();
+        await createdPlace.save({session: session});
+        user.places.push(createdPlace);
+        await user.save({session: session});
+        await session.commitTransaction();
     } catch(err) {
-        const error = new HttpError('Creating place failed',500);
-        return next(error);
+        await session.abortTransaction();
+        return next(new HttpError('Creating place failed'));
     }
     
-    return res.status(201).json({place: createdPlaceObj});
+    return res.status(201).json({place: createdPlace});
 };
 
 const updatePlaceById = async (req, res, next) => {
@@ -122,19 +130,32 @@ const updatePlaceById = async (req, res, next) => {
 
 const deletePlace = async (req, res, next) => {
     const placeId = req.params.pid;
+    console.log('placeId',placeId);
     
     let place;
     try {
-        place = Place.findById(placeId);
+        place = await Place.findById(placeId).populate('creator');
     }
     catch(err) {
+        console.log(err);
         return next(new HttpError('Something went wrong'));
     }
 
+    if (!place) {
+        return next(new HttpError('Place not found', 404));
+    }
+
+    let session;
     try {
-        await place.remove();
+        session = await mongoose.startSession();
+        session.startTransaction();
+        await place.remove({session: session});
+        place.creator.places.pull(place);
+        await place.creator.save({session: session});
+        await session.commitTransaction();
     }
     catch(err) {
+        console.log(err);
         return next(new HttpError('Error on deleting'));
     }
 
