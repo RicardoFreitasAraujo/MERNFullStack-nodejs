@@ -12,16 +12,25 @@ const DUMMY_USERS = [
     }
 ]; 
 
-const getUsers = (req, res, next) => {
-    return res.json({users: DUMMY_USERS});
+const getUsers = async (req, res, next) => {
+    let users;
+    try {
+        users = await User.find({}, '-password');
+    } catch(err) {
+        next(new HttpError('Error on list users'));
+    }
+
+    return res.json({users: users.map(user => user.toObject({getters: true}))});
+    
 };
 
 const signup = async (req, res, next) => {
     const errors = validationResult(req);
+    console.log(errors);
     if (!errors.isEmpty()) {
         return next(new HttpError('Invalid inputs', 422));
     }
-    const { name, email, password, places } = req.body;
+    const { name, email, password } = req.body;
 
     let existingUser = null;
     try {
@@ -41,7 +50,7 @@ const signup = async (req, res, next) => {
         email,
         image: 'https://avatarfiles.alphacoders.com/667/thumb-66754.jpg',
         password,
-        places
+        places: []
     });
 
     try
