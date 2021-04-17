@@ -8,8 +8,6 @@ const Place = require('../model/place');
 const User = require('../model/user');
 
 
-
-
 const getPlaceById = async (req, res, next) => {
     const placeId = req.params.pid;
     let place;
@@ -29,20 +27,23 @@ const getPlaceById = async (req, res, next) => {
 
 const getPlaceByUserId = async (req, res, next) => {
     const userId = req.params.uid;
-    let places;
+    console.log(userId);
+    
+    let userWithPlaces;
     try {
-        places = await Place.find({ creator: userId });
+        userWithPlaces = await User.findById(userId).populate('places');
+        console.log(userWithPlaces);
     }
     catch (ex)
     {
         return next(new HttpError('Fechting places failed, please again later'));
     }
     
-    if (!places || places.length === 0) {
+    if (!userWithPlaces || userWithPlaces.places.length === 0) {
         return next(new HttpError('Could not find places for the user id.', 404));
     }
-
-    return res.json({places: places.map(item => item.toObject({ getters: true })) });
+    
+    return res.json({places: userWithPlaces.places.map(item => item.toObject({ getters: true })) });
 };
 
 const createPlace = async (req, res, next) => {
@@ -126,7 +127,6 @@ const updatePlaceById = async (req, res, next) => {
     
     return res.status(200).json({place: place.toObject({getters: true})});
 };
-
 
 const deletePlace = async (req, res, next) => {
     const placeId = req.params.pid;
