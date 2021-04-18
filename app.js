@@ -9,6 +9,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
+//CORS
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin','*');
+    res.setHeader('Access-Control-Allow-Headers','*');
+    res.setHeader('Acess-Control-Allow-Methods','GET, POST, PATCH, PUT, DELETE');
+    next();
+});
+
 
 app.use('/api/places',placeRoutes);
 app.use('/api/users',userRoutes);
@@ -27,7 +35,7 @@ app.use((error, req, res, next) =>{
                .json({message: error.message || 'An unknown error occurred!'});
 });
 
-const url = 'mongodb+srv://admin:santos@cluster0.osdel.mongodb.net/places?retryWrites=true&w=majority';
+const url = 'mongodb+srv://admin:santos@cluster0.osdel.mongodb.net/mern?retryWrites=true&w=majority';
 
 console.log('Iniciando aplicação.');
 mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
