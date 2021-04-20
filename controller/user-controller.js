@@ -59,7 +59,7 @@ const signup = async (req, res, next) => {
 const login = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        throw new HttpError('Invalid inputs', 422);
+        return next(new HttpError('Invalid inputs', 422));
     }
 
     const {email, password } = req.body;
@@ -75,7 +75,7 @@ const login = async (req, res, next) => {
         return next(new HttpError('Invalid credentials, couldn not log in'), 401);
     }
 
-    return res.json({message: 'LoggedIn'});
+    return res.json({message: 'LoggedIn', user: existingUser.toObject({ getters: true })});
 }
 
 exports.getUsers = getUsers; 
