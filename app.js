@@ -50,7 +50,7 @@ app.use((error, req, res, next) => {
                .json({message: error.message || 'An unknown error occurred!'});
 });
 
-const url = 'mongodb+srv://admin:santos@cluster0.osdel.mongodb.net/mern?retryWrites=true&w=majority';
+const url = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.osdel.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
 
 console.log('Iniciando aplicação.');
 mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
