@@ -2,7 +2,8 @@ const HttpError = require('../model/http-error');
 const uuid = require('uuid/v4');
 const { validationResult } = require('express-validator');
 const User = require('../model/user');
-
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const getUsers = async (req, res, next) => {
     let users;
@@ -22,6 +23,7 @@ const signup = async (req, res, next) => {
     if (!errors.isEmpty()) {
         return next(new HttpError('Invalid inputs', 422));
     }
+
     const { name, email, password } = req.body;
 
     let existingUser = null;
@@ -37,11 +39,19 @@ const signup = async (req, res, next) => {
         return next(new HttpError('User exists already, please login with another one'));
     }
 
+    let hashedPassword = null;
+    try {
+        hashedPassword = await bcrypt.hashSync(password, 12);
+    } catch(err) {
+        next(new HttpError('Could not create user, please try again.'));
+    }
+    
+
     const createUser = new User({
         name,
         email,
-        image: 'https://avatarfiles.alphacoders.com/667/thumb-66754.jpg',
-        password,
+        image: req.file.path,
+        password: hashedPassword,
         places: []
     });
 
@@ -52,8 +62,24 @@ const signup = async (req, res, next) => {
     catch(err) {
         return next(new HttpError('Signup failed'));
     }
+
+    let token;
+    try 
+    {
+        token = jwt.sign({userId: createUser.id, email: createUser.email }, 
+                        'supersecret_dont_share', {
+                            expiresIn: '1h'
+                        });
+    }
+    catch(err) {
+        return next(new HttpError('Error on generating token'));
+    }
     
-    return res.status(201).json({user: createUser.toObject({ getters: true })});
+    return res.status(201).json({
+        userId: createUser.id,
+        email: createUser.email,
+        token: token
+    });
 }
 
 const login = async (req, res, next) => {
@@ -68,16 +94,45 @@ const login = async (req, res, next) => {
     try {
         existingUser = await User.findOne({email: email})
     } catch(err){
-        return next(new HttpError('Loggin in failed'))
+        return next(new HttpError('Loggin in failed'));
     }
 
-    if (!existingUser || existingUser.password !== password) {
+    if (!existingUser) {
         return next(new HttpError('Invalid credentials, couldn not log in'), 401);
     }
 
-    return res.json({message: 'LoggedIn', user: existingUser.toObject({ getters: true })});
+    let isValidPassword = false;
+    try 
+    {
+        isValidPassword = await bcrypt.compare(password, existingUser.password)
+    }
+    catch (err) {
+        return next(new HttpError('Couldn not log in'), 500);
+    }
+
+    if (!isValidPassword) {
+        return next(new HttpError('Password is WRONG'), 401);
+    }
+
+    let token;
+    try 
+    {
+        token = jwt.sign({userId: existingUser.id, email: existingUser.email }, 
+                        'supersecret_dont_share', {
+                        expiresIn: '1h'
+                        });
+    }
+    catch(err) {
+        return next(new HttpError('Error on generating token'));
+    }
+
+    return res.status(200).json({
+        userId: existingUser.id,
+        email: existingUser.email,
+        token: token
+    });
 }
 
 exports.getUsers = getUsers; 
 exports.signup = signup; 
-exports.login = login;
+exports.login = login; 

@@ -1,3 +1,4 @@
+const fs = require('fs');
 const HttpError = require('../model/http-error');
 const uuid = require('uuid/v4');
 const mongoose = require('mongoose');
@@ -51,7 +52,7 @@ const createPlace = async (req, res, next) => {
     if (!errors.isEmpty()) {
         return next(new HttpError('Invalid inputs', 422));
     }
-    const { title, description, address, creator } = req.body;
+    const { title, description, address } = req.body;
     
     let  coordinates; 
     try {
@@ -78,8 +79,8 @@ const createPlace = async (req, res, next) => {
         description,
         address,
         location: coordinates,
-        image: 'https://ibcdn.canaltech.com.br/8FplhVkDQdAatiUcehCimgkGJlI=/512x288/smart/i257652.jpeg',
-        creator
+        image: req.file.path,
+        creator: req.userData.userId
     });
 
     try {
@@ -115,6 +116,10 @@ const updatePlaceById = async (req, res, next) => {
         next(new HttpError('Something went wrong'));
     }
 
+    if (place.creator.ToString() !== req.userData.userId) {
+        next(new HttpError('You are not allowed to edit this place', 401));
+    }
+
     try {
         place.title = title;
         place.description = description;
@@ -130,7 +135,6 @@ const updatePlaceById = async (req, res, next) => {
 
 const deletePlace = async (req, res, next) => {
     const placeId = req.params.pid;
-    console.log('placeId',placeId);
     
     let place;
     try {
@@ -145,6 +149,12 @@ const deletePlace = async (req, res, next) => {
         return next(new HttpError('Place not found', 404));
     }
 
+    if (place.creator.id !== req.userData.userId) {
+        return next(new HttpError('You are not allowed to edit this place', 401));
+    }
+
+    const imagePath = place.image;
+
     let session;
     try {
         session = await mongoose.startSession();
@@ -158,6 +168,12 @@ const deletePlace = async (req, res, next) => {
         console.log(err);
         return next(new HttpError('Error on deleting'));
     }
+
+    fs.unlink(imagePath, (err) => {
+        if (err) {
+            console.log('Error on deleting places image.')
+        }
+    });
 
     res.status(200).json({message: 'Deleted place'});
 };

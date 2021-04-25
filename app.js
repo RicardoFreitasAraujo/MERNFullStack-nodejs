@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 const express = require('express');
 const mongoose = require('mongoose');
 
@@ -9,6 +12,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
+
+  
 //CORS
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin','*');
@@ -18,6 +23,8 @@ app.use((req, res, next) => {
 });
 
 
+app.use('/uploads/images', express.static(path.join('uploads','images')));
+
 app.use('/api/places',placeRoutes);
 app.use('/api/users',userRoutes);
 
@@ -25,8 +32,16 @@ app.use((req, res, next) => {
     return next(new HttpError('Resource not found', 404));
 });
 
-app.use((error, req, res, next) =>{
-    
+app.use((error, req, res, next) => {
+
+    //Rollback File
+    if (req.file) {
+        fs.unlink(req.file.path, (err) => {
+            console.log('Error on removing file', err);
+        });
+    } 
+
+      
     if (res.headerSent) {
         return next(error);
     }
